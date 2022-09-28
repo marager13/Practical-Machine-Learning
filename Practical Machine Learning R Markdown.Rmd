@@ -1,0 +1,79 @@
+---
+title: "Practical Machine Learning"
+author: "Marissa Arager"
+date: "9/28/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+#Load Packages
+library(dplyr)
+library(caret)
+library(AppliedPredictiveModeling)
+library(data.table)
+library(rattle)
+library(ggplot2)
+library(randomForest)
+
+```
+
+
+#### Background
+The goal of this project was select a machine learning alogrithim to predict the manner in which test participants conducted exercises using the database from the following URL. http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. The data comes from accelerometers on the belt, forearm, arm, and dumbell of 6 participants and was used to quantify how well a particluar exercie activity has been completed.
+
+
+#### Data Cleaning
+```{r, message=FALSE, warning=FALSE}
+
+#load data and data cleaning 
+data<-read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"),na.strings=c("","NA"))
+set.seed(1000)
+# Remove unnecessary data columns
+data<-data[,-c(1:7)]
+# Remove columns that have more than 50% of missing data 
+data<-data[,colSums(is.na(data))<.5*19622]
+```
+
+#### Model Setup
+```{r, message=FALSE, warning=FALSE}
+#Model Setup
+#Split the data into training and testing sets
+intrain<-createDataPartition(data$classe, p = .9, list = FALSE)
+training<-data[intrain,]
+testing<-data[-intrain,]
+# Split the training set into subtraining and validation sets for use after final model has been selected 
+insubtrain<-createDataPartition(training$classe, p = .8, list = FALSE)
+subtraining<-training[insubtrain,]
+validation<-training[-insubtrain,]
+```
+
+####Model Creation
+```{r, message=FALSE, warning=FALSE}
+#Model Creating 
+#decision tree model
+DTmodFit <- train(classe ~.,method="rpart",data=subtraining)
+DTPred <- predict(DTmodFit, validation)
+#Confusion Matrix
+confusionMatrix(validation$classe, DTPred)
+
+#Random Forest
+RFmodFit<-randomForest(formula = classe ~ ., data = subtraining)
+RFPred<-predict(RFmodFit, validation)
+confusionMatrix(RFPred, validation$classe)
+```
+
+#### Model Selection
+```{r, message=FALSE, warning=FALSE}
+##predict final test set -- choose model
+# By comparing the confusion matricies between the two models, Random forest is more accurate than the decision tree, so we will select Random Forest as our final model. 
+FinalModPred<-predict(RFmodFit,testing)
+confusionMatrix(FinalModPred, testing$classe)
+
+```
+
+#### Conclusion
+By using a random forest algorithim we were able to predict how well a particular activity was conducted. 
